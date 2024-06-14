@@ -52,7 +52,7 @@ await devConn.connect("http://localhost:8000/rpc", {
   database: "main",
 });
 if (devToken.value != undefined) {
-  await devAuth();
+  await devAuth(false);
 }
 
 async function devSignIn() {
@@ -109,7 +109,7 @@ async function devSignUp() {
     });
 }
 
-async function devAuth() {
+async function devAuth(showToast = true) {
   console.log("dev auth with token:", devToken.value);
 
   if (devToken.value == undefined) {
@@ -129,11 +129,13 @@ async function devAuth() {
       if (devName.value == undefined) {
         devName.value = devCred.value.name;
       }
-      toasts.add({
-        severity: "success",
-        summary: "认证成功",
-        life: 4000,
-      });
+      if (showToast) {
+        toasts.add({
+          severity: "success",
+          summary: "认证成功",
+          life: 4000,
+        });
+      }
     })
     .catch(() => {
       devToken.value = undefined;
