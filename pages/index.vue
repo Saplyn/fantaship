@@ -15,7 +15,11 @@
         class="flex h-28 w-7/12 items-center justify-between rounded-xl bg-green-200 p-5"
       >
         <div class="flex gap-4">
-          <Button icon="pi pi-bookmark" />
+          <Button
+            icon="pi pi-bookmark"
+            v-if="audToken != undefined"
+            @click="subscribe(p.id!)"
+          />
           <div class="flex flex-col gap-1">
             <p class="text-3xl font-bold text-green-900">{{ p.name }}</p>
             <p class="text-sm text-green-900/50">{{ p.pid }}</p>
@@ -25,40 +29,40 @@
         <div
           class="flex flex-col items-end justify-center gap-1 overflow-visible text-xs"
         >
-          <div
-            class="group flex flex-row-reverse items-center gap-2 duration-75 ease-out hover:text-sm"
-          >
-            <p class="shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white">
+          <div class="flex flex-row-reverse items-center gap-2">
+            <p
+              class="peer shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white duration-75 ease-out hover:text-sm"
+            >
               <i class="pi pi-cloud-download"></i> 软件发行
             </p>
             <p
-              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out group-hover:-translate-x-24 group-hover:opacity-100"
+              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out peer-hover:-translate-x-24 peer-hover:text-sm peer-hover:opacity-100"
             >
               {{ intoInstallString(p.install) }}
             </p>
           </div>
 
-          <div
-            class="group flex flex-row-reverse items-center gap-2 duration-75 ease-out hover:text-sm"
-          >
-            <p class="shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white">
+          <div class="flex flex-row-reverse items-center gap-2">
+            <p
+              class="peer shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white duration-75 ease-out hover:text-sm"
+            >
               <i class="pi pi-download"></i> 安装方式
             </p>
             <p
-              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out group-hover:-translate-x-24 group-hover:opacity-100"
+              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out peer-hover:-translate-x-24 peer-hover:text-sm peer-hover:opacity-100"
             >
               {{ intoSourceString(p.source) }}
             </p>
           </div>
 
-          <div
-            class="group flex flex-row-reverse items-center gap-2 duration-75 ease-out hover:text-sm"
-          >
-            <p class="shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white">
+          <div class="flex flex-row-reverse items-center gap-2">
+            <p
+              class="peer shrink-0 rounded-lg bg-emerald-500 px-2 py-1 text-white duration-75 ease-out hover:text-sm"
+            >
               <i class="pi pi-info-circle"></i> 解压方式
             </p>
             <p
-              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out group-hover:-translate-x-24 group-hover:opacity-100"
+              class="absolute -translate-x-20 rounded bg-green-400 px-2 py-1 text-green-900 opacity-0 duration-75 ease-out peer-hover:-translate-x-24 peer-hover:text-sm peer-hover:opacity-100"
             >
               {{ intoExtractString(p.extract) }}
             </p>
@@ -72,23 +76,37 @@
 <script lang="ts" setup>
 import Button from "primevue/button";
 import InputGroup from "primevue/inputgroup";
-import Surreal from "surrealdb.js";
+import Surreal, { RecordId } from "surrealdb.js";
+
+const toasts = useToast();
+const audToken = useCookie<string | undefined>("audToken");
+const audId = useCookie<RecordId | undefined>("audId");
 
 const searchText = ref<string>("");
 
 const packages = ref<PackageFull[]>([]);
 
 const conn = new Surreal();
-await conn.connect("http://localhost:8000/rpc", {
-  namespace: "main",
-  database: "main",
-  auth: {
+if (audToken.value != undefined) {
+  await conn.connect("http://localhost:8000/rpc", {
     namespace: "main",
     database: "main",
-    scope: "guest",
-    name: "guest",
-  },
-});
+  });
+  await makeAuth(conn, audToken.value).catch((err) => {
+    console.error("auth as audience failed:", err);
+  });
+} else {
+  await conn.connect("http://localhost:8000/rpc", {
+    namespace: "main",
+    database: "main",
+    auth: {
+      namespace: "main",
+      database: "main",
+      scope: "guest",
+      name: "guest",
+    },
+  });
+}
 
 await useProbe(conn);
 
@@ -105,6 +123,7 @@ conn
   });
 
 // LYN: Utils
+
 function intoInstallString(ins: UnknownRecord): string {
   switch (ins.id?.tb) {
     case "executable":
@@ -132,6 +151,48 @@ function intoExtractString(ext: string | undefined): string {
   } else {
     return `作为 ${ext} 文件解压`;
   }
+}
+
+// LYN: Subscription
+
+function subscribe(apid: RecordId) {
+  if (audToken.value == undefined) {
+    toasts.add({
+      severity: "error",
+      summary: "订阅失败",
+      detail: "请先登录或注册为受众用户",
+      life: 4000,
+    });
+    return;
+  }
+
+  conn
+    .query(
+      "RELATE (type::thing($audTb, $audId))->subscribe->(type::thing('available_package', $apId));",
+      {
+        audTb: audId.value?.toString().split(":")[0],
+        audId: audId.value?.toString().split(":")[1],
+        apId: apid,
+      },
+    )
+    .then((res) => {
+      console.log("subscribe success:", res);
+      toasts.add({
+        severity: "success",
+        summary: "订阅成功",
+        life: 4000,
+      });
+    })
+    .catch((err) => {
+      console.error("subscribe failed:", err);
+      console.error("subscribe failed:", err.message);
+      toasts.add({
+        severity: "error",
+        summary: "订阅失败",
+        detail: "或已经订阅过该软件包",
+        life: 4000,
+      });
+    });
 }
 </script>
 

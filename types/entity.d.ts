@@ -6,10 +6,19 @@ declare global {
     name: string;
     pswd: string;
   };
+  type DeveloperInfo = {
+    id: RecordId;
+    name: string;
+  };
+
   type AudienceCredential = {
     id?: RecordId;
     name: string;
     pswd: string;
+  };
+  type AudienceInfo = {
+    id: RecordId;
+    name: string;
   };
 
   type Publisher = {

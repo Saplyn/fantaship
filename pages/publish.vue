@@ -190,7 +190,6 @@
 </template>
 
 <script lang="ts" setup>
-import { defaultOptions } from "primevue/config";
 import type Fieldset from "primevue/fieldset";
 import Surreal from "surrealdb.js";
 
@@ -305,14 +304,16 @@ const availableSources = ref([SOURCE_NONE, SOURCE_GITHUB, SOURCE_GIT]);
 const selectedSource = ref<
   typeof SOURCE_NONE | typeof SOURCE_GITHUB | typeof SOURCE_GIT
 >(SOURCE_NONE);
-const githubSource = ref<SourceGithubRaw>({
-  repo: "",
+const EMPRY_GITHUB_SOURCE = {
   owner: "",
+  repo: "",
   v_regex: "",
-});
-const gitSource = ref<SourceGitRaw>({
+};
+const githubSource = ref<SourceGithubRaw>(EMPRY_GITHUB_SOURCE);
+const EMPTY_GIT_SOURCE = {
   origin: "",
-});
+};
+const gitSource = ref<SourceGitRaw>(EMPTY_GIT_SOURCE);
 
 const EXTRACT_NONE = { name: "不解压", code: undefined };
 const EXTRACT_TAR = { name: "Tar", code: "tar" };
@@ -337,10 +338,12 @@ const availableInstalls = ref([INSTALL_NONE, INSTALL_EXECUTABLE]);
 const selectedInstall = ref<typeof INSTALL_NONE | typeof INSTALL_EXECUTABLE>(
   INSTALL_NONE,
 );
-const executableInstall = ref<InstallExecutableRaw>({
+
+const EMPRY_EXECUTABLE_INSTALL = {
   target: "",
   rename: undefined,
-});
+};
+const executableInstall = ref<InstallExecutableRaw>(EMPRY_EXECUTABLE_INSTALL);
 const executableRenameCheck = ref<boolean>(false);
 watch(executableRenameCheck, (checked) => {
   if (checked) {
@@ -408,6 +411,7 @@ async function editPackage(p: Package) {
       selectedInstall.value = INSTALL_EXECUTABLE;
       executableInstall.value = originalInstall.value as InstallExecutableRaw;
       if (executableInstall.value.rename == undefined) {
+        executableInstall.value.rename = undefined;
         executableRenameCheck.value = false;
       } else {
         executableRenameCheck.value = true;
@@ -530,6 +534,7 @@ async function submitEdit() {
       switch (selectedInstall.value.code) {
         case "executable":
           ins = executableInstall.value;
+          // FIXME:
           break;
         default:
           console.error("unreachable code: submitEdit()/install");
