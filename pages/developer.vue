@@ -3,7 +3,7 @@
     <!-- Login -->
     <div
       v-if="devToken == undefined"
-      class="flex h-full w-full flex-col items-center justify-center gap-4 pb-20"
+      class="flex h-full w-full flex-col items-center gap-4 pt-10"
     >
       <p class="mb-2 text-2xl font-bold text-green-900">登录或注册开发者账户</p>
       <IconField icon-position="right">
@@ -26,8 +26,10 @@
 
     <!-- Developer Info -->
     <div v-else>
-      <div class="flex items-center justify-between">
-        <p>{{ devName }}</p>
+      <div class="flex items-center justify-center gap-6 pt-10">
+        <p class="text-2xl font-bold text-green-900">
+          已作为开发者 {{ devName }} 登入
+        </p>
         <Button @click="devSignOut" severity="danger">登出</Button>
       </div>
     </div>
