@@ -1,6 +1,14 @@
 <template>
   <div class="pt-10">
-    <div class="grid grid-cols-2 gap-4">
+    <div
+      v-if="audToken == undefined"
+      class="flex flex-col items-center justify-center gap-8 pt-10"
+    >
+      <p class="text-3xl font-bold text-green-900">未登录为软件受众</p>
+      <Button label="前往登录" @click="navigateTo('/audience')" />
+    </div>
+
+    <div class="grid grid-cols-2 gap-4" v-else>
       <div
         v-for="p in mySubscription"
         class="rounded-xl bg-green-200 px-6 py-4"
